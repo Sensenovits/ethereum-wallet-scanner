@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereum Wallet Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #00ff9d;
+            --background-color: #1a1a1a;
+            --secondary-background: #2d2d2d;
+            --text-color: #ffffff;
+            --border-color: #444;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            background-color: var(--secondary-background);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.4);
+        }
+        .stat-item {
+            background-color: #333;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        .result-item {
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #333;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary-color);
+            font-family: monospace;
+        }
+        .balance-positive {
+            color: #00ff9d;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="text-center mb-4">
+            <h1>Ethereum Wallet Scanner</h1>
+            <p>Advanced Scanning Engine with Balance Verification</p>
+        </div>
+        <div class="mb-3">
+            <label for="start-range" class="form-label">Start Key (Hex):</label>
+            <input type="text" class="form-control" id="start-range"
+                   value="0000000000000000000000000000000000000000000000080000000000000000">
+        </div>
+        <div class="mb-3">
+            <label for="stop-range" class="form-label">Stop Key (Hex):</label>
+            <input type="text" class="form-control" id="stop-range"
+                   value="00000000000000000000000000000000000000000000000ffffffffffffffff">
+        </div>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center my-4">
+            <button id="sequential-button" class="btn btn-primary">Sequential Scan</button>
+            <button id="stop-button" class="btn btn-danger" disabled>Stop Scan</button>
+        </div>
+        <div class="row text-center">
+            <div class="col-md-3 stat-item" id="progress">Progress: 0.00000000%</div>
+            <div class="col-md-3 stat-item" id="scanned-keys">Scanned Keys: 0</div>
+            <div class="col-md-3 stat-item" id="found-count">Found Wallets: 0</div>
+        </div>
+        <div class="row text-center mt-3">
+            <div class="col-md-12 stat-item" id="current-key">Current Key: 0x0000000000000000000000000000000000000000000000000000000000000000</div>
+        </div>
+        <div id="results" class="mt-4"></div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const scanner = {
+                isScanning: false,
+                totalScanned: 0,
+                foundWallets: 0,
+            };
+
+            async function startScan() {
+                const startKey = document.getElementById('start-range').value.trim();
+                const stopKey = document.getElementById('stop-range').value.trim();
+
+                scanner.isScanning = true;
+                document.getElementById('sequential-button').disabled = true;
+                document.getElementById('stop-button').disabled = false;
+
+                const response = await fetch('http://localhost:3000/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ startKey, stopKey }),
+                });
+
+                const data = await response.json();
+                scanner.isScanning = false;
+                document.getElementById('sequential-button').disabled = false;
+                document.getElementById('stop-button').disabled = true;
+
+                data.results.forEach(wallet => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'result-item';
+                    resultDiv.innerHTML = `
+                        <div class="balance-positive">Balance: ${wallet.balance} ETH</div>
+                        <div>Address: ${wallet.address}</div>
+                        <div>Found Key: ${wallet.privateKey}</div>
+                    `;
+                    document.getElementById('results').prepend(resultDiv);
+                });
+
+                document.getElementById('found-count').textContent = `Found Wallets: ${data.results.length}`;
+            }
+
+            function stopScan() {
+                scanner.isScanning = false;
+                document.getElementById('sequential-button').disabled = false;
+                document.getElementById('stop-button').disabled = true;
+            }
+
+            document.getElementById('sequential-button').addEventListener('click', startScan);
+            document.getElementById('stop-button').addEventListener('click', stopScan);
+        });
+    </script>
+</body>
+</html>
